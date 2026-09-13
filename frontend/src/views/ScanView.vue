@@ -8,11 +8,12 @@
       <div v-if="result" class="bg-white rounded-2xl border border-gray-200 shadow-sm p-6 space-y-5">
         <!-- Top: Gauge + Metadata -->
         <div class="flex flex-col md:flex-row items-center gap-6">
-          <RiskGauge :score="result.risk_score" :threshold="result.threshold" />
+          <RiskGauge :score="displayScore(result)" />
           <div class="space-y-2 text-center md:text-left">
             <PredictionBadge :prediction="result.prediction" />
             <div class="space-y-1 text-sm text-gray-600 mt-3">
-              <p>Risk Score: <span class="font-semibold text-gray-900">{{ formatPercent(result.risk_score) }}</span></p>
+              <p>Model Score: <span class="font-semibold text-gray-900">{{ formatPercent(displayScore(result)) }}</span></p>
+              <p>Decision Score: {{ formatPercent(result.risk_score) }}</p>
               <p>Risk Level: <RiskBadge :level="result.risk_level" /></p>
               <p>Threshold: {{ formatPercent(result.threshold) }}</p>
             </div>
@@ -80,7 +81,7 @@
             </td>
             <td class="px-3 py-2.5 text-right font-semibold"
                 :style="{ color: getRiskColor(scan.risk_level).text }">
-              {{ formatPercent(scan.risk_score) }}
+              {{ formatPercent(displayScore(scan)) }}
             </td>
             <td class="px-3 py-2.5 text-center">
               <PredictionBadge :prediction="scan.prediction" />
@@ -99,7 +100,7 @@
 import { ref } from 'vue'
 import { scanUrl } from '../api/client'
 import { useScanHistory } from '../stores/scanHistory'
-import { formatPercent, formatTimeAgo, truncateUrl } from '../utils/formatters'
+import { displayScore, formatPercent, formatTimeAgo, truncateUrl } from '../utils/formatters'
 import { getRiskColor } from '../utils/riskColors'
 
 import UrlInput from '../components/scan/UrlInput.vue'

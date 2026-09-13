@@ -12,6 +12,7 @@ class ScanResponse(BaseModel):
     normalized_url: str
     prediction: str                         # "phishing" | "legitimate"
     risk_score: float = Field(ge=0, le=1)
+    model_score: float | None = Field(default=None, ge=0, le=1)
     risk_level: str                         # "low" | "medium" | "high" | "critical"
     threshold: float
     explanation: ExplanationResponse
@@ -23,6 +24,7 @@ class BatchResultItem(BaseModel):
     url: str
     prediction: str
     risk_score: float = Field(ge=0, le=1)
+    model_score: float | None = Field(default=None, ge=0, le=1)
     risk_level: str
 
 

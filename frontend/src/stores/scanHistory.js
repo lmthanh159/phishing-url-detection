@@ -10,6 +10,7 @@ export const useScanHistory = defineStore('scanHistory', {
       this.recentScans.unshift({
         url: result.url,
         risk_score: result.risk_score,
+        model_score: result.model_score,
         prediction: result.prediction,
         risk_level: result.risk_level,
         scanned_at: new Date().toISOString(),

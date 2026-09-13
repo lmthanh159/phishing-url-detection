@@ -46,7 +46,13 @@ async def explain_url(body: ExplainRequest, request: Request):
 
     # Predict
     threshold = _threshold(request)
-    pred = predict_single(features, request.app.state.calibrated_model, feature_names, threshold)
+    pred = predict_single(
+        features,
+        request.app.state.calibrated_model,
+        request.app.state.model,
+        feature_names,
+        threshold,
+    )
 
     # Explain
     explanation = explain_single(features, request.app.state.explainer, feature_names)
@@ -55,6 +61,7 @@ async def explain_url(body: ExplainRequest, request: Request):
         url=body.url,
         normalized_url=normalized,
         risk_score=pred["risk_score"],
+        model_score=pred["model_score"],
         prediction=pred["prediction"],
         risk_level=pred["risk_level"],
         explanation=explanation,

@@ -25,7 +25,9 @@ def test_explain_returns_full_shap_details(client):
     response = client.post("/api/explain", json={"url": "http://paypa1-login.xyz/verify"})
 
     assert response.status_code == 200
-    explanation = response.json()["explanation"]
+    data = response.json()
+    assert 0 <= data["model_score"] <= 1
+    explanation = data["explanation"]
     assert explanation["type"] == "shap"
     assert explanation["model_output"] == "raw"
     assert len(explanation["feature_contributions"]) == 37

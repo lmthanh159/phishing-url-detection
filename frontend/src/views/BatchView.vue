@@ -85,7 +85,7 @@
                 URL <span v-if="sortField === 'url'">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
               </th>
               <th class="px-3 py-2 text-right cursor-pointer hover:text-gray-700" @click="sortByScore">
-                Score <span v-if="sortField === 'score'">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
+                Model Score <span v-if="sortField === 'score'">{{ sortDir === 'asc' ? '↑' : '↓' }}</span>
               </th>
               <th class="px-3 py-2 text-center">Level</th>
               <th class="px-3 py-2 text-center">Action</th>
@@ -96,7 +96,7 @@
               <td class="px-5 py-2 text-gray-400">{{ (currentPage - 1) * pageSize + i + 1 }}</td>
               <td class="px-3 py-2 font-mono text-xs truncate max-w-[300px]" :title="r.url">{{ truncateUrl(r.url, 60) }}</td>
               <td class="px-3 py-2 text-right font-semibold" :style="{ color: getRiskColor(r.risk_level).text }">
-                {{ formatPercent(r.risk_score) }}
+                {{ formatPercent(displayScore(r)) }}
               </td>
               <td class="px-3 py-2 text-center"><RiskBadge :level="r.risk_level" /></td>
               <td class="px-3 py-2 text-center">
@@ -147,7 +147,8 @@
             <p class="text-sm font-mono text-gray-600 break-all">{{ detailData.url }}</p>
             <div class="flex items-center gap-3">
               <PredictionBadge :prediction="detailData.prediction" />
-              <span class="text-sm text-gray-600">Risk Score: <b>{{ formatPercent(detailData.risk_score) }}</b></span>
+              <span class="text-sm text-gray-600">Model Score: <b>{{ formatPercent(displayScore(detailData)) }}</b></span>
+              <span class="text-sm text-gray-600">Decision Score: <b>{{ formatPercent(detailData.risk_score) }}</b></span>
               <RiskBadge :level="detailData.risk_level" />
             </div>
             <hr class="border-gray-100" />
@@ -188,7 +189,7 @@ import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { FolderUp, Loader2, X } from 'lucide-vue-next'
 import { toast } from 'vue3-toastify'
 import { scanBatch, explainUrl } from '../api/client'
-import { formatPercent, truncateUrl, formatMs } from '../utils/formatters'
+import { displayScore, formatPercent, truncateUrl, formatMs } from '../utils/formatters'
 import { getRiskColor } from '../utils/riskColors'
 
 import RiskBadge from '../components/scan/RiskBadge.vue'
@@ -283,7 +284,7 @@ const filteredResults = computed(() => {
     items = items.filter(r => r.url.toLowerCase().includes(q))
   }
   items = [...items].sort((a, b) => {
-    if (sortField.value === 'score') return sortDir.value === 'desc' ? b.risk_score - a.risk_score : a.risk_score - b.risk_score
+    if (sortField.value === 'score') return sortDir.value === 'desc' ? displayScore(b) - displayScore(a) : displayScore(a) - displayScore(b)
     return sortDir.value === 'desc' ? b.url.localeCompare(a.url) : a.url.localeCompare(b.url)
   })
   return items
@@ -299,8 +300,8 @@ function toggleSort() { sortField.value = 'url'; sortDir.value = sortDir.value =
 function sortByScore() { sortField.value = 'score'; sortDir.value = sortDir.value === 'asc' ? 'desc' : 'asc' }
 
 function exportCSV() {
-  const header = 'url,prediction,risk_score,risk_level\n'
-  const rows = batchResult.value.results.map(r => `"${r.url}",${r.prediction},${r.risk_score},${r.risk_level}`).join('\n')
+  const header = 'url,prediction,model_score,risk_score,risk_level\n'
+  const rows = batchResult.value.results.map(r => `"${r.url}",${r.prediction},${displayScore(r)},${r.risk_score},${r.risk_level}`).join('\n')
   downloadFile(header + rows, 'scan_results.csv', 'text/csv')
   exported.value = true
 }

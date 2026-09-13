@@ -10,6 +10,7 @@ from app.config import RISK_LEVEL_BANDS, get_feature_schema
 def predict_single(
     feature_dict: dict,
     calibrated_model,
+    base_model=None,
     feature_names: list[str] | None = None,
     threshold: float = 0.5,
 ) -> dict:
@@ -23,12 +24,18 @@ def predict_single(
     start = time.perf_counter()
     risk_score = float(calibrated_model.predict_proba(x)[:, 1][0])
     inference_ms = (time.perf_counter() - start) * 1000
+    model_score = (
+        float(base_model.predict_proba(x)[:, 1][0])
+        if base_model is not None
+        else None
+    )
 
     prediction = "phishing" if risk_score >= threshold else "legitimate"
     risk_level = map_risk_level(risk_score)
 
     return {
         "risk_score": round(risk_score, 4),
+        "model_score": round(model_score, 6) if model_score is not None else None,
         "prediction": prediction,
         "risk_level": risk_level,
         "threshold": threshold,
@@ -39,18 +46,25 @@ def predict_single(
 def predict_batch(
     feature_df: pd.DataFrame,
     calibrated_model,
+    base_model=None,
     threshold: float = 0.5,
 ) -> list[dict]:
     """Vectorized batch prediction → list of results."""
     start = time.perf_counter()
     risk_scores = calibrated_model.predict_proba(feature_df.values)[:, 1]
+    model_scores = (
+        base_model.predict_proba(feature_df.values)[:, 1]
+        if base_model is not None
+        else [None] * len(risk_scores)
+    )
     total_ms = (time.perf_counter() - start) * 1000
 
     results = []
-    for score in risk_scores:
+    for score, model_score in zip(risk_scores, model_scores):
         score = float(score)
         results.append({
             "risk_score": round(score, 4),
+            "model_score": round(float(model_score), 6) if model_score is not None else None,
             "prediction": "phishing" if score >= threshold else "legitimate",
             "risk_level": map_risk_level(score),
         })

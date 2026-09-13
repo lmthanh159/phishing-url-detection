@@ -58,7 +58,13 @@ async def scan_url(body: ScanRequest, request: Request):
 
     # Predict
     threshold = _threshold(request)
-    pred = predict_single(features, request.app.state.calibrated_model, feature_names, threshold)
+    pred = predict_single(
+        features,
+        request.app.state.calibrated_model,
+        request.app.state.model,
+        feature_names,
+        threshold,
+    )
 
     # Explain (SHAP on base model)
     explanation = explain_single(features, request.app.state.explainer, feature_names)
@@ -78,6 +84,7 @@ async def scan_url(body: ScanRequest, request: Request):
         normalized_url=normalized,
         prediction=pred["prediction"],
         risk_score=pred["risk_score"],
+        model_score=pred["model_score"],
         risk_level=pred["risk_level"],
         threshold=pred["threshold"],
         explanation=explanation,
@@ -138,7 +145,12 @@ async def scan_batch(request: Request, file: UploadFile = File(...)):
 
     # Vectorized prediction
     threshold = _threshold(request)
-    predictions, pred_ms = predict_batch(feature_df, request.app.state.calibrated_model, threshold)
+    predictions, pred_ms = predict_batch(
+        feature_df,
+        request.app.state.calibrated_model,
+        request.app.state.model,
+        threshold,
+    )
 
     # Build results
     results = []
@@ -150,6 +162,7 @@ async def scan_batch(request: Request, file: UploadFile = File(...)):
             url=orig_url,
             prediction=pred["prediction"],
             risk_score=pred["risk_score"],
+            model_score=pred["model_score"],
             risk_level=pred["risk_level"],
         ))
         risk_dist[pred["risk_level"]] += 1

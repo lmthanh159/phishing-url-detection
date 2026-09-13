@@ -32,6 +32,7 @@ def test_scan_logs_prediction_without_raw_url(client):
     assert response.status_code == 200
     data = response.json()
     assert data["prediction"] == "phishing"
+    assert 0 <= data["model_score"] <= 1
     assert "feature_contributions" in data["explanation"]
 
     assert log_path.exists()
@@ -52,6 +53,21 @@ def test_batch_invalid_url_returns_422(client):
 
     assert response.status_code == 422
     assert "Invalid URL at row 3" in response.json()["detail"]
+
+
+def test_batch_scan_returns_model_score(client):
+    clear_rate_limits()
+    csv = b"url\nhttps://google.com\nhttp://paypa1-login.xyz/verify\n"
+
+    response = client.post(
+        "/api/scan/batch",
+        files={"file": ("urls.csv", io.BytesIO(csv), "text/csv")},
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["results"]) == 2
+    assert all(0 <= item["model_score"] <= 1 for item in data["results"])
 
 
 def test_single_scan_rate_limit_returns_retry_after(client):

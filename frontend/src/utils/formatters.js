@@ -1,5 +1,14 @@
 export function formatPercent(value, decimals = 1) {
-  return (value * 100).toFixed(decimals) + '%'
+  if (typeof value !== 'number' || Number.isNaN(value)) return 'N/A'
+  const percent = value * 100
+  if (percent > 0 && percent < 0.1) return '<0.1%'
+  if (percent < 100 && percent > 99.9) return '>99.9%'
+  return percent.toFixed(decimals) + '%'
+}
+
+export function displayScore(result) {
+  if (!result) return 0
+  return typeof result.model_score === 'number' ? result.model_score : result.risk_score
 }
 
 export function formatTimeAgo(isoString) {

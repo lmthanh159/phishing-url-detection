@@ -162,6 +162,7 @@ Example response shape:
   "normalized_url": "https://www.google.com/",
   "prediction": "legitimate",
   "risk_score": 0.0,
+  "model_score": 0.004658,
   "risk_level": "low",
   "threshold": 0.5146681331630758,
   "explanation": {
@@ -173,6 +174,11 @@ Example response shape:
   "model_version": "lightgbm_20260810_081812"
 }
 ```
+
+Score fields:
+
+- `risk_score`: calibrated probability used for `prediction`, `risk_level`, and threshold comparison.
+- `model_score`: base LightGBM probability used by the frontend gauge/display because the calibrated score can saturate near `0.0` or `1.0`.
 
 Detailed explanation:
 
@@ -252,7 +258,7 @@ Final test metrics recorded in `artifacts/model_metadata.json`:
 ## Notes And Limitations
 
 - This is an ML-assisted detection tool, not a definitive security verdict.
-- SHAP explanations are generated from the base LightGBM model, while prediction scores come from the calibrated model.
+- SHAP explanations and `model_score` come from the base LightGBM model. `risk_score` comes from the calibrated model and is used for the final decision.
 - Model behavior depends heavily on the training data and feature distribution. Benign URLs with login-like paths or sensitive keywords may still require additional review.
 - Keep `scikit-learn==1.6.1` aligned with the serialized artifacts unless the model artifacts are regenerated.
 

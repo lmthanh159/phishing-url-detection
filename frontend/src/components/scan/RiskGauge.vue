@@ -10,16 +10,17 @@ import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { GaugeChart } from 'echarts/charts'
 import { CanvasRenderer } from 'echarts/renderers'
+import { formatPercent } from '../../utils/formatters'
 
 use([GaugeChart, CanvasRenderer])
 
 const props = defineProps({
   score: { type: Number, required: true },
-  threshold: { type: Number, default: 0.515 },
+  threshold: { type: Number, default: null },
 })
 
-const chartOption = computed(() => ({
-  series: [
+const chartOption = computed(() => {
+  const series = [
     {
       type: 'gauge',
       startAngle: 180,
@@ -48,7 +49,7 @@ const chartOption = computed(() => ({
         itemStyle: { color: '#334155' },
       },
       detail: {
-        formatter: `${(props.score * 100).toFixed(1)}%`,
+        formatter: formatPercent(props.score),
         fontSize: 22,
         fontWeight: 'bold',
         color: '#0f172a',
@@ -58,8 +59,10 @@ const chartOption = computed(() => ({
       markLine: {},
       title: { show: false },
     },
-    // Threshold marker
-    {
+  ]
+
+  if (typeof props.threshold === 'number') {
+    series.push({
       type: 'gauge',
       startAngle: 180,
       endAngle: 0,
@@ -84,7 +87,9 @@ const chartOption = computed(() => ({
       },
       data: [{ value: props.threshold * 100 }],
       title: { show: false },
-    },
-  ],
-}))
+    })
+  }
+
+  return { series }
+})
 </script>

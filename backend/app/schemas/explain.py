@@ -44,6 +44,7 @@ class ExplainFullResponse(BaseModel):
     url: str
     normalized_url: str
     risk_score: float
+    model_score: float | None = None
     prediction: str
     risk_level: str
     explanation: ExplanationResponse
