@@ -1,0 +1,67 @@
+{
+  "model_name": "LightGBM",
+  "model_version": "lightgbm_20260810_081812",
+  "feature_set": "Final",
+  "n_features": 37,
+  "calibration_method": "sigmoid",
+  "threshold": 0.5146681331630758,
+  "deploy_strategy": "A1",
+  "hyperparameters": {
+    "n_estimators": 300,
+    "max_depth": 8,
+    "learning_rate": 0.0815901432225607,
+    "subsample": 0.6126976769095352,
+    "colsample_bytree": 0.8862774967258824,
+    "num_leaves": 125,
+    "min_child_samples": 25,
+    "reg_alpha": 0.024230260333881596,
+    "reg_lambda": 0.018568373335967676
+  },
+  "tuning_trials_per_model": 50,
+  "data_sources": [
+    "phiusiil",
+    "phishtank",
+    "tranco"
+  ],
+  "created_at": "2026-08-10T08:18:12.749772+00:00",
+  "final_test_metrics": {
+    "precision": 0.9908,
+    "recall": 0.9791,
+    "f1": 0.9849,
+    "roc_auc": 0.9971,
+    "pr_auc": 0.9973,
+    "brier": 0.0108
+  },
+  "tuning_comparison": [
+    {
+      "model": "LightGBM",
+      "f1_default": 0.9876,
+      "f1_tuned": 0.9878439502397398,
+      "improvement": 0.00024395023973977636
+    },
+    {
+      "model": "XGBoost",
+      "f1_default": 0.9873,
+      "f1_tuned": 0.9875607324439997,
+      "improvement": 0.00026073244399971163
+    },
+    {
+      "model": "CatBoost",
+      "f1_default": 0.9864,
+      "f1_tuned": 0.9875463697092435,
+      "improvement": 0.0011463697092434222
+    },
+    {
+      "model": "RandomForest",
+      "f1_default": 0.9319,
+      "f1_tuned": 0.9803243757866598,
+      "improvement": 0.04842437578665981
+    },
+    {
+      "model": "LogisticRegression",
+      "f1_default": 0.9637,
+      "f1_tuned": 0.8911996352767029,
+      "improvement": -0.07250036472329713
+    }
+  ]
+}

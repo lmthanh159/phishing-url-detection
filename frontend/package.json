@@ -1,0 +1,28 @@
+{
+  "name": "phishing-url-detection",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "vue": "^3.4",
+    "vue-router": "^4.4",
+    "pinia": "^2.2",
+    "pinia-plugin-persistedstate": "^4.0",
+    "axios": "^1.7",
+    "echarts": "^5.6",
+    "vue-echarts": "^7.0",
+    "lucide-vue-next": "^0.400",
+    "vue3-toastify": "^0.2"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0",
+    "@tailwindcss/vite": "^4.1",
+    "tailwindcss": "^4.1",
+    "vite": "^6.0"
+  }
+}
