@@ -16,6 +16,8 @@
       </div>
       <input ref="fileInput" type="file" accept=".csv" class="hidden" @change="handleFileSelect" />
 
+      <p v-if="fileError" class="mt-3 text-sm text-red-600">{{ fileError }}</p>
+
       <div v-if="fileName" class="mt-3 flex items-center justify-between bg-gray-50 rounded-lg px-4 py-2">
         <span class="text-sm text-gray-700">{{ fileName }} ({{ urlCount }} URLs detected)</span>
         <button @click="clearFile" class="text-xs text-red-500 hover:underline">Remove</button>
@@ -31,6 +33,7 @@
           {{ scanning ? 'Scanning...' : 'Scan All URLs' }}
         </button>
       </div>
+      <p v-if="batchError" class="mt-3 text-sm text-red-600">{{ batchError }}</p>
     </div>
 
     <!-- Summary -->
@@ -52,6 +55,11 @@
         <p class="text-sm text-gray-500">Total Time</p>
       </div>
     </div>
+
+    <RiskDistribution
+      v-if="batchResult"
+      :distribution="batchResult.summary.risk_distribution"
+    />
 
     <!-- Results Table -->
     <div v-if="batchResult" class="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
@@ -111,11 +119,24 @@
 
     <!-- Detail Modal -->
     <Teleport to="body">
-      <div v-if="detailModal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/50" @click.self="detailModal = null">
-        <div class="bg-white rounded-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto p-6 space-y-4">
+      <div
+        v-if="detailModal"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="detail-modal-title"
+        @click.self="closeDetailModal"
+        @keydown.esc="closeDetailModal"
+        @keydown.tab="trapDetailFocus"
+      >
+        <div
+          ref="modalRef"
+          tabindex="-1"
+          class="bg-white rounded-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto p-6 space-y-4 outline-none"
+        >
           <div class="flex justify-between items-center">
-            <h2 class="text-lg font-semibold">URL Explanation</h2>
-            <button @click="detailModal = null" class="text-gray-400 hover:text-gray-600"><X class="w-5 h-5" /></button>
+            <h2 id="detail-modal-title" class="text-lg font-semibold">URL Explanation</h2>
+            <button @click="closeDetailModal" class="text-gray-400 hover:text-gray-600" aria-label="Close explanation modal"><X class="w-5 h-5" /></button>
           </div>
 
           <div v-if="detailLoading" class="py-12 text-center text-gray-400">
@@ -131,8 +152,30 @@
             </div>
             <hr class="border-gray-100" />
             <ReasonsList :reasons="detailData.explanation?.reasons || []" :prediction="detailData.prediction" />
-            <FeatureWaterfall v-if="detailData.explanation?.top_features" :top-features="detailData.explanation.top_features" />
+            <FeatureWaterfall
+              v-if="detailData.explanation?.top_features"
+              :top-features="detailData.explanation.top_features"
+              :waterfall-data="detailData.explanation.waterfall_data"
+            />
           </template>
+        </div>
+      </div>
+
+      <div
+        v-if="leavePromptOpen"
+        class="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="leave-modal-title"
+        @keydown.esc="cancelLeave"
+      >
+        <div class="bg-white rounded-2xl max-w-md w-full mx-4 p-6 space-y-4">
+          <h2 id="leave-modal-title" class="text-lg font-semibold text-gray-900">Unsaved Results</h2>
+          <p class="text-sm text-gray-600">Your batch results have not been exported yet. Leaving this page will discard them.</p>
+          <div class="flex justify-end gap-2">
+            <button @click="cancelLeave" class="px-4 py-2 text-sm border rounded-lg hover:bg-gray-50">Stay</button>
+            <button @click="confirmLeave" class="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700">Leave</button>
+          </div>
         </div>
       </div>
     </Teleport>
@@ -140,9 +183,10 @@
 </template>
 
 <script setup>
-import { ref, computed, onBeforeUnmount } from 'vue'
-import { onBeforeRouteLeave } from 'vue-router'
+import { ref, computed, nextTick, onBeforeUnmount } from 'vue'
+import { onBeforeRouteLeave, useRouter } from 'vue-router'
 import { FolderUp, Loader2, X } from 'lucide-vue-next'
+import { toast } from 'vue3-toastify'
 import { scanBatch, explainUrl } from '../api/client'
 import { formatPercent, truncateUrl, formatMs } from '../utils/formatters'
 import { getRiskColor } from '../utils/riskColors'
@@ -151,11 +195,15 @@ import RiskBadge from '../components/scan/RiskBadge.vue'
 import PredictionBadge from '../components/scan/PredictionBadge.vue'
 import ReasonsList from '../components/scan/ReasonsList.vue'
 import FeatureWaterfall from '../components/scan/FeatureWaterfall.vue'
+import RiskDistribution from '../components/batch/RiskDistribution.vue'
 
+const router = useRouter()
 const dragOver = ref(false)
 const csvFile = ref(null)
 const fileName = ref('')
 const urlCount = ref(0)
+const fileError = ref('')
+const batchError = ref('')
 const scanning = ref(false)
 const batchResult = ref(null)
 const filter = ref('all')
@@ -168,14 +216,28 @@ const exported = ref(false)
 const detailModal = ref(null)
 const detailLoading = ref(false)
 const detailData = ref(null)
+const modalRef = ref(null)
+const leavePromptOpen = ref(false)
+const pendingRoute = ref(null)
+const allowLeave = ref(false)
 
 function handleFileSelect(e) { processFile(e.target.files[0]) }
 function handleDrop(e) { dragOver.value = false; processFile(e.dataTransfer.files[0]) }
 
 function processFile(file) {
+  fileError.value = ''
+  batchError.value = ''
   if (!file) return
-  if (!file.name.toLowerCase().endsWith('.csv')) return alert('Only CSV files accepted')
-  if (file.size > 5 * 1024 * 1024) return alert('File exceeds 5MB limit')
+  if (!file.name.toLowerCase().endsWith('.csv')) {
+    fileError.value = 'Only CSV files accepted'
+    toast.warning(fileError.value)
+    return
+  }
+  if (file.size > 5 * 1024 * 1024) {
+    fileError.value = 'File exceeds 5MB limit'
+    toast.warning(fileError.value)
+    return
+  }
   csvFile.value = file
   fileName.value = file.name
   // Quick row count
@@ -187,10 +249,19 @@ function processFile(file) {
   reader.readAsText(file)
 }
 
-function clearFile() { csvFile.value = null; fileName.value = ''; urlCount.value = 0 }
+function clearFile() {
+  csvFile.value = null
+  fileName.value = ''
+  urlCount.value = 0
+  fileError.value = ''
+  batchError.value = ''
+}
 
 async function handleBatchScan() {
-  scanning.value = true; exported.value = false; batchResult.value = null
+  scanning.value = true
+  exported.value = false
+  batchResult.value = null
+  batchError.value = ''
   const formData = new FormData()
   formData.append('file', csvFile.value)
   try {
@@ -198,7 +269,8 @@ async function handleBatchScan() {
     batchResult.value = data
     currentPage.value = 1
   } catch (err) {
-    alert(err.response?.data?.detail || 'Batch scan failed')
+    batchError.value = err.response?.data?.detail || 'Batch scan failed'
+    toast.error(batchError.value)
   } finally { scanning.value = false }
 }
 
@@ -242,21 +314,64 @@ function downloadFile(content, name, type) {
 }
 
 async function showDetail(url) {
-  detailModal.value = url; detailLoading.value = true; detailData.value = null
+  detailModal.value = url
+  detailLoading.value = true
+  detailData.value = null
+  await nextTick()
+  modalRef.value?.focus()
   try {
     const { data } = await explainUrl(url)
     detailData.value = data
-  } catch { detailData.value = null }
+  } catch {
+    detailData.value = null
+    toast.error('Could not load URL explanation')
+  }
   finally { detailLoading.value = false }
 }
 
+function closeDetailModal() {
+  detailModal.value = null
+  detailData.value = null
+}
+
+function trapDetailFocus(event) {
+  const focusable = modalRef.value?.querySelectorAll(
+    'a[href], button:not([disabled]), textarea, input, select, [tabindex]:not([tabindex="-1"])'
+  )
+  if (!focusable?.length) return
+
+  const first = focusable[0]
+  const last = focusable[focusable.length - 1]
+  if (event.shiftKey && document.activeElement === first) {
+    event.preventDefault()
+    last.focus()
+  } else if (!event.shiftKey && document.activeElement === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
+
 // Navigation guard
-onBeforeRouteLeave((to, from, next) => {
-  if (batchResult.value && !exported.value) {
-    const leave = confirm('Unsaved results will be lost. Leave anyway?')
-    next(leave)
-  } else next()
+onBeforeRouteLeave((to) => {
+  if (allowLeave.value || !batchResult.value || exported.value) return true
+
+  pendingRoute.value = to
+  leavePromptOpen.value = true
+  return false
 })
+
+function cancelLeave() {
+  leavePromptOpen.value = false
+  pendingRoute.value = null
+}
+
+function confirmLeave() {
+  allowLeave.value = true
+  leavePromptOpen.value = false
+  const target = pendingRoute.value
+  pendingRoute.value = null
+  if (target) router.push(target.fullPath)
+}
 
 const beforeUnload = (e) => {
   if (batchResult.value && !exported.value) { e.preventDefault(); e.returnValue = '' }

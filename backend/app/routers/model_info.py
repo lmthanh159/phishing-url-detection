@@ -1,10 +1,10 @@
 """Model info and health check endpoints."""
 import time
 
-from fastapi import APIRouter, Request
+from fastapi import APIRouter, Request, HTTPException
 
 from app.config import get_model_metadata, get_threshold_config, get_feature_schema
-from app.services.predictor import get_risk_bands
+from app.services.risk_mapper import get_risk_bands
 from app.services.explainer import get_global_importance
 
 router = APIRouter(prefix="/api", tags=["model"])
@@ -13,9 +13,16 @@ router = APIRouter(prefix="/api", tags=["model"])
 @router.get("/model-info")
 async def model_info(request: Request):
     """Return model metadata, metrics, and global feature importance."""
-    metadata = get_model_metadata()
-    threshold_config = get_threshold_config()
-    feature_schema = get_feature_schema()
+    model_loaded = (
+        getattr(request.app.state, "calibrated_model", None) is not None
+        and getattr(request.app.state, "model", None) is not None
+    )
+    if not model_loaded:
+        raise HTTPException(status_code=503, detail="Model not available")
+
+    metadata = getattr(request.app.state, "metadata", None) or get_model_metadata()
+    threshold_config = getattr(request.app.state, "threshold_config", None) or get_threshold_config()
+    feature_schema = getattr(request.app.state, "feature_schema", None) or get_feature_schema()
 
     global_importance = get_global_importance(request.app.state.global_importance)
 
@@ -40,7 +47,7 @@ async def health_check(request: Request):
         hasattr(request.app.state, "calibrated_model")
         and request.app.state.calibrated_model is not None
     )
-    metadata = get_model_metadata() if model_loaded else {}
+    metadata = (getattr(request.app.state, "metadata", None) or get_model_metadata()) if model_loaded else {}
 
     return {
         "status": "healthy" if model_loaded else "unhealthy",

@@ -25,6 +25,7 @@ _TOKEN_SPLIT_RE = re.compile(r"[.\-_/?&=]+")
 _IP_RE = re.compile(r"^(?:\d{1,3}\.){3}\d{1,3}$|^\[?[0-9a-fA-F:]+\]?$")
 _ENCODED_RE = re.compile(r"%[0-9a-fA-F]{2}")
 _DOUBLE_SLASH_RE = re.compile(r"//.*//")
+_TLD_EXTRACT = tldextract.TLDExtract(suffix_list_urls=(), cache_dir=None)
 
 
 # ── Helpers ──
@@ -107,7 +108,7 @@ def _brand_distance(
 
 def _parse_url(url: str) -> dict:
     parsed = urlparse(url)
-    ext = tldextract.extract(url)
+    ext = _TLD_EXTRACT(url)
     hostname = parsed.hostname or ""
     path = parsed.path or ""
     registered_domain = (

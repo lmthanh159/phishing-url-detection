@@ -4,6 +4,12 @@
 
     <!-- Loading -->
     <div v-if="loading" class="text-center py-12 text-gray-400">Loading model information...</div>
+    <div v-else-if="error" class="bg-red-50 border border-red-200 rounded-xl p-6 text-center">
+      <p class="text-sm text-red-700">{{ error }}</p>
+      <button @click="loadModelInfo" class="mt-4 px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700">
+        Retry
+      </button>
+    </div>
 
     <template v-else-if="info">
       <!-- Model + Metrics cards -->
@@ -41,6 +47,9 @@
             {{ src }}
           </div>
         </div>
+        <div class="h-56 mt-5">
+          <v-chart :option="dataSourcesChart" autoresize />
+        </div>
       </div>
 
       <!-- Global Feature Importance -->
@@ -74,15 +83,23 @@ use([BarChart, GridComponent, TooltipComponent, CanvasRenderer])
 
 const loading = ref(true)
 const info = ref(null)
+const error = ref('')
 const showAll = ref(false)
 
-onMounted(async () => {
+async function loadModelInfo() {
+  loading.value = true
+  error.value = ''
   try {
     const { data } = await getModelInfo()
     info.value = data
-  } catch { /* toast handled by interceptor */ }
+  } catch {
+    info.value = null
+    error.value = 'Could not load model information. Please try again.'
+  }
   finally { loading.value = false }
-})
+}
+
+onMounted(loadModelInfo)
 
 const importance = computed(() => info.value?.global_feature_importance || [])
 const displayedFeatures = computed(() => showAll.value ? importance.value : importance.value.slice(0, 10))
@@ -108,7 +125,7 @@ const importanceChart = computed(() => {
     series: [{
       type: 'bar',
       data: features.map(f => ({
-        value: f.mean_abs_shap,
+        value: f.importance ?? f.mean_abs_shap,
         itemStyle: {
           color: '#3B82F6',
           borderRadius: [0, 4, 4, 0],
@@ -123,6 +140,46 @@ const importanceChart = computed(() => {
         color: '#64748b',
       },
     }],
+  }
+})
+
+const dataSourcesChart = computed(() => {
+  const sources = info.value?.data_sources || []
+  const labels = sources.map(source => String(source).toUpperCase())
+  const estimates = {
+    phiusiil: { phishing: 0, legitimate: 195000 },
+    phishtank: { phishing: 55000, legitimate: 0 },
+    tranco: { phishing: 0, legitimate: 9000 },
+  }
+  const phishing = sources.map(source => estimates[source]?.phishing || 0)
+  const legitimate = sources.map(source => estimates[source]?.legitimate || 0)
+
+  return {
+    tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
+    legend: { bottom: 0, textStyle: { color: '#475569' } },
+    grid: { left: '12%', right: '6%', top: '8%', bottom: '22%' },
+    xAxis: { type: 'value', axisLabel: { fontSize: 11 } },
+    yAxis: {
+      type: 'category',
+      data: labels,
+      axisLabel: { color: '#475569', fontSize: 11 },
+    },
+    series: [
+      {
+        name: 'Legitimate',
+        type: 'bar',
+        stack: 'total',
+        data: legitimate,
+        itemStyle: { color: '#10B981' },
+      },
+      {
+        name: 'Phishing',
+        type: 'bar',
+        stack: 'total',
+        data: phishing,
+        itemStyle: { color: '#EF4444' },
+      },
+    ],
   }
 })
 </script>

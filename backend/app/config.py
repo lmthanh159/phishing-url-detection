@@ -98,6 +98,11 @@ def get_feature_schema() -> dict:
 
 
 @lru_cache
+def get_shared_infra_domains() -> dict:
+    return load_json_artifact("shared_infra_domains.json")
+
+
+@lru_cache
 def get_threshold_config() -> dict:
     return load_json_artifact("threshold_config.json")
 

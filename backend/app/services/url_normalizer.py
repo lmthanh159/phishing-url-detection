@@ -34,7 +34,7 @@ def validate_url(url: str) -> URLValidationResult:
         if url.startswith("//"):
             url = "http:" + url
         elif "://" not in url:
-            url = "http://" + url
+            url = "https://" + url
         else:
             return URLValidationResult(False, url, error="unsupported_scheme")
 
@@ -72,7 +72,7 @@ def normalize_url(url: str) -> str:
         if url.startswith("//"):
             url = "http:" + url
         elif "://" not in url:
-            url = "http://" + url
+            url = "https://" + url
 
     parsed = urlparse(url)
     scheme = parsed.scheme.lower()

@@ -28,7 +28,7 @@ class TestValidation:
     def test_missing_scheme(self):
         r = validate_url("example.com/path")
         assert r.is_valid
-        assert r.normalized_url.startswith("http://")
+        assert r.normalized_url.startswith("https://")
 
     def test_ftp_rejected(self):
         r = validate_url("ftp://example.com")

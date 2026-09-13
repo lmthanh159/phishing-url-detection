@@ -1,4 +1,6 @@
 """Request/response schemas for explain endpoint."""
+from typing import Literal
+
 from pydantic import BaseModel, Field
 
 
@@ -10,7 +12,13 @@ class FeatureContribution(BaseModel):
     feature: str
     value: float
     shap_value: float
-    direction: str      # "increases_risk" | "decreases_risk"
+    direction: Literal["increases_risk", "decreases_risk"]
+
+
+class FeatureContributionDetail(BaseModel):
+    value: float
+    shap_value: float
+    direction: Literal["increases_risk", "decreases_risk"]
 
 
 class WaterfallData(BaseModel):
@@ -24,9 +32,12 @@ class ExplanationResponse(BaseModel):
     model_output: str = "raw"
     note: str = "SHAP values explain the underlying LightGBM decision before probability calibration"
     base_value: float
+    feature_contributions: dict[str, FeatureContributionDetail] | None = None
     top_features: list[FeatureContribution]
     reasons: list[str]
     waterfall_data: WaterfallData
+    all_shap_values: dict[str, float] | None = None
+    latency_ms: float | None = None
 
 
 class ExplainFullResponse(BaseModel):

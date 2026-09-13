@@ -102,14 +102,23 @@ def explain_single(
     for v in waterfall_values:
         cumulative.append(round(cumulative[-1] + v, 4))
 
-    # All SHAP values
+    # All SHAP values and detailed per-feature contributions.
     all_shap = {f: round(float(s), 4) for f, s in zip(feature_names, sv)}
+    feature_contributions = {
+        f: {
+            "value": feature_dict.get(f, 0),
+            "shap_value": all_shap[f],
+            "direction": "increases_risk" if all_shap[f] > 0 else "decreases_risk",
+        }
+        for f in feature_names
+    }
 
     return {
         "type": "shap",
         "model_output": "raw",
         "note": "SHAP values explain the underlying LightGBM decision before probability calibration",
         "base_value": round(base_value, 4),
+        "feature_contributions": feature_contributions,
         "top_features": top_features,
         "reasons": reasons,
         "waterfall_data": {
@@ -124,7 +133,11 @@ def explain_single(
 
 def get_global_importance(global_importance_df: pd.DataFrame) -> list[dict]:
     """Return cached global feature importance as list of dicts."""
-    return global_importance_df.to_dict("records")
+    records = []
+    for row in global_importance_df.to_dict("records"):
+        importance = row.get("importance", row.get("mean_abs_shap"))
+        records.append({**row, "importance": importance})
+    return records
 
 
 def _generate_reasons(top_features: list[dict], feature_dict: dict) -> list[str]:

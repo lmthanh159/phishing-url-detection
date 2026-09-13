@@ -33,6 +33,7 @@
         <FeatureWaterfall
           v-if="result.explanation?.top_features?.length"
           :top-features="result.explanation.top_features"
+          :waterfall-data="result.explanation.waterfall_data"
         />
       </div>
     </transition>

@@ -1,7 +1,7 @@
 <template>
   <div>
     <h3 class="text-sm font-semibold text-gray-700 mb-3">Feature Impact</h3>
-    <div class="h-64">
+    <div :style="{ height: chartHeight }">
       <v-chart :option="chartOption" autoresize />
     </div>
     <p class="mt-2 text-xs text-gray-400 italic">
@@ -22,10 +22,32 @@ use([BarChart, GridComponent, TooltipComponent, CanvasRenderer])
 
 const props = defineProps({
   topFeatures: { type: Array, default: () => [] },
+  waterfallData: { type: Object, default: null },
+})
+
+const featureRows = computed(() => {
+  if (props.waterfallData?.features?.length && props.waterfallData?.values?.length) {
+    return props.waterfallData.features.map((feature, index) => ({
+      feature,
+      shap_value: Number(props.waterfallData.values[index] || 0),
+      cumulative: props.waterfallData.cumulative?.[index + 1],
+    }))
+  }
+
+  return props.topFeatures.map(feature => ({
+    feature: feature.feature,
+    shap_value: Number(feature.shap_value || 0),
+    cumulative: null,
+  }))
+})
+
+const chartHeight = computed(() => {
+  const count = Math.max(featureRows.value.length, 1)
+  return `${Math.min(Math.max(count * 26 + 56, 260), 920)}px`
 })
 
 const chartOption = computed(() => {
-  const features = [...props.topFeatures].reverse()
+  const features = [...featureRows.value].reverse()
   const names = features.map(f => f.feature.replace(/_/g, ' '))
   const values = features.map(f => f.shap_value)
   const colors = features.map(f => f.shap_value > 0 ? '#EF4444' : '#3B82F6')
@@ -35,8 +57,12 @@ const chartOption = computed(() => {
       trigger: 'axis',
       formatter: (params) => {
         const p = params[0]
-        const dir = p.value > 0 ? '↑ Increases risk' : '↓ Decreases risk'
-        return `${p.name}<br/>SHAP: ${p.value > 0 ? '+' : ''}${p.value.toFixed(4)}<br/>${dir}`
+        const row = features[p.dataIndex]
+        const dir = p.value > 0 ? 'Increases risk' : 'Decreases risk'
+        const cumulative = Number.isFinite(row?.cumulative)
+          ? `<br/>Cumulative raw output: ${row.cumulative.toFixed(4)}`
+          : ''
+        return `${p.name}<br/>SHAP: ${p.value > 0 ? '+' : ''}${p.value.toFixed(4)}<br/>${dir}${cumulative}`
       },
     },
     grid: { left: '35%', right: '10%', top: '5%', bottom: '10%' },
